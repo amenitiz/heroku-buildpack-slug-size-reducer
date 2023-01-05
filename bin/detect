@@ -1,0 +1,26 @@
+#!/bin/bash
+
+echo "-----> validating application"
+exit 0
+
+# BUILD_DIR=$(cd "$1/" && pwd)
+
+
+# indent() {
+#   sed -u 's/^/       /'
+# }
+
+# cd $BUILD_DIR
+
+# echo "-----> validating application"
+# echo "YARN_PRODUCTION=$YARN_PRODUCTION" | indent
+
+# # [[ "$YARN_PRODUCTION" == "false" ]] && exit 0 || exit 1
+
+# if [[ "$YARN_PRODUCTION" == "false" ]]; then
+#   echo "Compatible" | indent
+#   exit 0
+# else
+#   echo "Invalid"
+#   exit 1
+# fi

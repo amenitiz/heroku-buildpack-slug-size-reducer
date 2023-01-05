@@ -1,0 +1,144 @@
+#!/bin/bash
+
+indent() {
+  sed -u 's/^/       /'
+}
+
+calculate_size() {
+  du -ks $1 | cut -f 1 | tr -d "[:blank:]"
+}
+
+calculate_diff() {
+  echo "$(($1 - $2))"
+}
+
+printable_size() {
+  echo $(($1 / 1024)) | xargs printf "%.2fMB"
+}
+
+yarn_prod(){
+  yarn install --production --ignore-scripts --prefer-offline --no-audit --no-optional --frozen-lockfile 2>&1
+}
+
+YARN_PRODUCTION=true
+FORCE_COLOR=true
+
+BUILD_DIR=$(cd "$1/" && pwd)
+CACHE_DIR=$(cd "$2/" && pwd)
+
+cd $BUILD_DIR
+
+#################################### NODE_MODULES
+
+echo "-----> Node reinstall only production dependencies "
+echo "BUILD_DIR=$BUILD_DIR" | indent
+old_size=$(calculate_size node_modules)
+p_old_size=$(printable_size $old_size)
+echo "node_modules folder size $p_old_size" | indent
+
+echo ""
+echo "Install only prod env..." | indent
+echo ""
+yarn_prod | grep -v "warning" | indent
+echo ""
+echo "Removing cache..." | indent
+touch node_modules/.cache
+rm node_modules/.cache -rf
+echo ""
+
+new_size=$(calculate_size node_modules)
+p_new_size=$(printable_size $new_size)
+saved_1=$(calculate_diff $old_size $new_size)
+saved=$(printable_size $saved_1)
+echo "New Folder size $p_new_size." | indent
+echo "Saved $saved." | indent
+
+#################################### PUBLIC
+echo ""
+echo "-----> Public folder cleanup"
+old_size=$(calculate_size public)
+p_old_size=$(printable_size $old_size)
+echo "public folder size $p_old_size" | indent
+
+echo ""
+echo "Removing map from public folder..." | indent
+find public -name '*.gz' -delete
+echo "Removing gz from public folder..." | indent
+find public -name '*.map' -delete
+echo "Removing md files from public folder..." | indent
+find public -name '*.md' -delete
+
+new_size=$(calculate_size public)
+p_new_size=$(printable_size $new_size)
+saved_2=$(calculate_diff $old_size $new_size)
+saved=$(printable_size $saved_2)
+echo "New Folder size $p_new_size." | indent
+echo "Saved $saved." | indent
+
+#################################### GEMS
+
+echo ""
+echo "-----> Gems cleanup"
+old_size=$(calculate_size vendor/bundle)
+p_old_size=$(printable_size $old_size)
+echo "Gems folder size $p_old_size" | indent
+
+echo ""
+echo "Configuring options in bundler..." | indent
+bundle config set --local clean true
+bundle config set --local path vendor/bundle
+bundle config set --local cache_path vendor/cache
+bundle --deployment --clean
+
+echo "Removing map from gems folder..." | indent
+find vendor/bundle -name '*.gz' -delete
+echo "Removing gz from gems folder..." | indent
+find vendor/bundle -name '*.map' -delete
+echo "Removing md files from Gems folder..." | indent
+find . -name '*.md' -delete
+echo "Removing .c/.o/.h files from Gems folder..." | indent
+find . -name "*.c" -delete
+find . -name "*.h" -delete
+find . -name "*.o" -delete
+find . -name "*.cpp" -delete
+find . -name "*.hpp" -delete
+find . -name "spec" -type d -exec rm -rf {} +
+ls -1d vendor/bundle/ruby/*/gems/*/test | xargs rm -rf --
+# find . -name "test" -type d -exec rm -rf {} +
+# find vendor/bundle -name "assets" -type d -exec rm -rf {} +
+# find vendor/bundle -name "vendor" -type d -exec rm -rf {} +
+find vendor/bundle -name ".github" -type d -exec rm -rf {} +
+
+new_size=$(calculate_size vendor/bundle)
+p_new_size=$(printable_size $new_size)
+saved_3=$(calculate_diff $old_size $new_size)
+saved=$(printable_size $saved_3)
+echo "New Folder size $p_new_size." | indent
+echo "Saved $saved." | indent
+
+#################################### General
+
+echo ""
+echo "-----> Other cleanup"
+old_size=$(calculate_size .)
+p_old_size=$(printable_size $old_size)
+echo "Main folder size $p_old_size" | indent
+
+echo ""
+echo "Removing assets folder..." | indent
+rm -rf app/assets/fonts/ app/assets/images/ app/assets/javascripts/  app/assets/stylesheets/
+
+new_size=$(calculate_size .)
+p_new_size=$(printable_size $new_size)
+saved_4=$(calculate_diff $old_size $new_size)
+saved=$(printable_size $saved_4)
+echo "New Folder size $p_new_size." | indent
+echo "Saved $saved." | indent
+
+####################################
+
+
+echo ""
+echo "-----> Total saved"
+saved=$(printable_size $(($saved_1 + $saved_2 + $saved_3 + $saved_4)))
+echo "Total Saved $saved." | indent
